@@ -278,27 +278,27 @@ describe('Memory connector', function () {
     }
 
   });
-  
+
   it('should use collection setting', function (done) {
     var ds = new DataSource({
       connector: 'memory'
     });
-    
+
     var Product = ds.createModel('Product', {
       name: String
     });
-    
+
     var Tool = ds.createModel('Tool', {
       name: String
     }, {memory: {collection: 'Product'}});
-    
+
     var Widget = ds.createModel('Widget', {
       name: String
     }, {memory: {collection: 'Product'}});
-    
+
     ds.connector.getCollection('Tool').should.equal('Product');
     ds.connector.getCollection('Widget').should.equal('Product');
-    
+
     async.series([
       function(next) {
         Tool.create({ name: 'Tool A' }, next);
@@ -359,6 +359,9 @@ describe('Memory connector', function () {
     });
   });
 
+  require('./persistence-hooks.suite')(
+    require('../lib/connectors/memory').Memory,
+    should);
 });
 
 
