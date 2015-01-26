@@ -915,9 +915,6 @@ module.exports = function(connectorFactory, should) {
     // alternatively after-save hook can be emitted with the `where` query
     // instead of the model(s) that are updated
 
-    // TODO(bajtos) DISCUSSION POINT: should we test that relations methods
-    // notify hook observers too?
-
     function pushContextAndNext() {
       return function(context, next) {
         context = deepCloneToObject(context);
