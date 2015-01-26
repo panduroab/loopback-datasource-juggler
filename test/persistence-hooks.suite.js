@@ -63,7 +63,29 @@ module.exports = function(connectorFactory, should) {
         });
       });
 
-      // TODO(bajtos) geo query
+      it('triggers `query` hook for geo queries', function(done) {
+        TestModel.observe('query', pushContextAndNext());
+
+        TestModel.find({ where: { geo: { near: '10,20' }}}, function(err, list) {
+          if (err) return done(err);
+          observedContexts.should.eql(aTestModelCtx({
+            query: { where: { geo: { near: '10,20' } } }
+          }));
+          done();
+        });
+      });
+
+      it('applies updates from `query` hook for geo queries', function(done) {
+        TestModel.observe('query', function(ctx, next) {
+          ctx.query = { where: { id: existingInstance.id } };
+          next();
+        });
+
+        TestModel.find({ where: { geo: { near: '10,20' } } }, function(err, list) {
+          list.map(get('name')).should.eql([existingInstance.name]);
+          done();
+        });
+      });
     });
 
     describe('PersistedModel.create', function() {
