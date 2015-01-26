@@ -62,49 +62,6 @@ module.exports = function(connectorFactory, should) {
       });
 
       // TODO(bajtos) geo query
-
-      // TODO(bajtos) DISCUSSION POINT: test loading of nested/included models
-
-      it('triggers `after load` hook', function(done) {
-        TestModel.observe('after load', pushContextAndNext());
-
-        TestModel.find(
-          { where: { id: existingModel.id } },
-          function(err, list) {
-            if (err) return done(err);
-            observedContexts.should.eql({ model: list[0].toObject(true) });
-            done();
-          });
-      });
-
-      it('applies updates from `after load` hook', function(done) {
-        TestModel.observe('after load', function(ctx, next) {
-          ctx.model.should.be.instanceOf(TestModel);
-          ctx.model.custom = 'hook data';
-          next();
-        });
-
-        TestModel.find(
-          { where: { id: existingModel.id } },
-          function(err, list) {
-            if (err) return done(err);
-            (list[0] || {})
-              .should.have.property('custom', 'hook data');
-            done();
-          });
-      });
-
-      it('sends notification for each item in the result', function(done) {
-        TestModel.observe('after load', pushContextAndNext());
-
-        TestModel.find(function(err, list) {
-          observedContexts.should.eql([
-            { model: { id: '1', name: 'first' } },
-            { model: { id: '2', name: 'second' } }
-          ]);
-          done();
-        });
-      });
     });
 
     describe('PersistedModel.create', function() {
@@ -385,33 +342,6 @@ module.exports = function(connectorFactory, should) {
             done();
           });
       });
-
-      it('triggers `after load` hook when found', function(done) {
-        TestModel.observe('after load', pushContextAndNext());
-
-        TestModel.findOrCreate(
-          { where: { id: existingModel.id } },
-          { name: existingModel.name },
-          function(err, model) {
-            observedContexts.should.eql({ model: {
-              id: existingModel.id,
-              name: existingModel.name
-            }});
-            done();
-          });
-      });
-
-      it('does not trigger `after load` hook when found', function(done) {
-        TestModel.observe('after load', pushContextAndNext());
-
-        TestModel.findOrCreate(
-          { where: { name: 'new name' } },
-          { name: 'new name' },
-          function(err, model) {
-            observedContexts.should.eql("hook not called");
-            done();
-          });
-      });
     });
 
     describe('PersistedModel.count', function(done) {
@@ -423,15 +353,6 @@ module.exports = function(connectorFactory, should) {
           observedContexts.should.eql({ query: {
             where: { id: existingModel.id }
           }});
-          done();
-        });
-      });
-
-      it('does not trigger `after load` hook', function(done) {
-        TestModel.observe('after load', pushContextAndNext());
-
-        TestModel.count(function(err, model) {
-          observedContexts.should.eql("hook not called");
           done();
         });
       });
@@ -682,11 +603,6 @@ module.exports = function(connectorFactory, should) {
 
       it.skip('applies updates from `before load` hook when found');
       it.skip('applies updates from `before load` hook when not found');
-
-      // Reason: atomic updateOrCreate cannot emit this event
-      // To keep things simple, let's allow both variants
-      // TODO(bajtos) DISCUSSION POINT
-      it.skip('does not trigger after load hook on update');
 
       it('triggers `before save` hook on update', function(done) {
         TestModel.observe('before save', pushContextAndNext());
