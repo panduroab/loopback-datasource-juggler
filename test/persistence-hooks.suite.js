@@ -552,18 +552,7 @@ module.exports = function(connectorFactory, should) {
     });
 
     describe('PersistedModel.updateOrCreate', function() {
-      // TODO(bajtos) DISCUSSION POINT
-      // Should we trigger the `query` hook at all?
-      // Use case in mind: `query` hook adds the current userId
-      // to the query to ensure that the user is not accessing an instance
-      // he is not allowed to.
-      // But then: this should be handled by ACLs, not by hooks right?
-      //
-      // The trouble with `query` hook:
-      // How to pass the modified "where" filter to connector's
-      // updateOrCreate method, when the method signature does not
-      // accept extra where conditions?
-      it.skip('triggers `query` hook on create', function(done) {
+      it('triggers `query` hook on create', function(done) {
         TestModel.observe('query', pushContextAndNext());
 
         TestModel.updateOrCreate(
@@ -577,7 +566,7 @@ module.exports = function(connectorFactory, should) {
           });
       });
 
-      it.skip('triggers `query` hook on update', function(done) {
+      it('triggers `query` hook on update', function(done) {
         TestModel.observe('query', pushContextAndNext());
 
         TestModel.updateOrCreate(
@@ -603,8 +592,54 @@ module.exports = function(connectorFactory, should) {
           });
       });
 
-      it.skip('applies updates from `query` hook when found');
-      it.skip('applies updates from `query` hook when not found');
+      it('applies updates from `query` hook when found', function(done) {
+        var updateQuery = true;
+        TestModel.observe('query', function(ctx, next) {
+          if (updateQuery)
+            ctx.query = { where: { id: { neq: existingInstance.id } } };
+          next();
+        });
+
+        TestModel.updateOrCreate(
+          { id: existingInstance.id, name: 'new name' },
+          function(err, instance) {
+            if (err) return done(err);
+            updateQuery = false;
+            TestModel.find({ fields: ['id', 'name' ] }, function(err, list) {
+              if (err) return done(err);
+              (list||[]).map(toObject).should.eql([
+                { id: existingInstance.id, name: existingInstance.name },
+                { id: instance.id, name: 'new name' }
+              ]);
+              done();
+            });
+        });
+      });
+
+      it('applies updates from `query` hook when not found', function(done) {
+        var updateQuery = true;
+        TestModel.observe('query', function(ctx, next) {
+          if (updateQuery)
+            ctx.query = { where: { id: 'not-found' } };
+          next();
+        });
+
+        TestModel.updateOrCreate(
+          { id: existingInstance.id, name: 'new name' },
+          function(err, instance) {
+            if (err) return done(err);
+            updateQuery = false;
+            TestModel.find({ fields: ['id', 'name' ] }, function(err, list) {
+              if (err) return done(err);
+              (list||[]).map(toObject).should.eql([
+                { id: existingInstance.id, name: existingInstance.name },
+                { id: list[1].id, name: 'second' },
+                { id: instance.id, name: 'new name' }
+              ]);
+              done();
+            });
+        });
+      });
 
       it('triggers `before save` hook on update', function(done) {
         TestModel.observe('before save', pushContextAndNext());
@@ -975,5 +1010,9 @@ module.exports = function(connectorFactory, should) {
     return function(obj) {
       return obj[propertyName];
     };
+  }
+
+  function toObject(obj) {
+    return obj.toObject ? obj.toObject() : obj;
   }
 };
