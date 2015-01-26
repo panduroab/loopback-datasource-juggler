@@ -53,7 +53,7 @@ module.exports = function(connectorFactory, should) {
 
       it('applies updates from `query` hook', function(done) {
         TestModel.observe('query', function(ctx, next) {
-          ctx.query.where = { id: existingInstance.id };
+          ctx.query = { where: { id: existingInstance.id } };
           next();
         });
 
