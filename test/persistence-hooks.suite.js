@@ -464,10 +464,10 @@ module.exports = function(connectorFactory, should) {
         existingInstance.name = 'changed';
         existingInstance.updateAttributes({ name: 'changed' }, function(err) {
           if (err) return done(err);
-          observedContexts.should.eql(aTestModelCtx({ instance: {
-            id: existingInstance.id,
-            name: 'changed'
-          }}));
+          observedContexts.should.eql(aTestModelCtx({
+            where: { id: existingInstance.id },
+            data: { name: 'changed' }
+          }));
           done();
         });
       });
@@ -483,10 +483,9 @@ module.exports = function(connectorFactory, should) {
 
       it('applies updates from `before save` hook', function(done) {
         TestModel.observe('before save', function(ctx, next) {
-          ctx.instance.should.be.instanceOf(TestModel);
-          ctx.instance.custom = 'extra data';
-          ctx.instance.name = 'hooked name';
-          ctx.instance.removed = undefined;
+          ctx.data.custom = 'extra data';
+          ctx.data.name = 'hooked name';
+          ctx.data.removed = undefined;
           next();
         });
 
@@ -948,7 +947,11 @@ module.exports = function(connectorFactory, should) {
 
     function invalidateTestModel() {
       return function(context, next) {
-        context.instance.name = '';
+        if (context.instance) {
+          context.instance.name = '';
+        } else {
+          context.data.name = '';
+        }
         next();
       };
     }
