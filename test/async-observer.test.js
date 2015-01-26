@@ -65,6 +65,20 @@ describe('async observer', function() {
     });
   });
 
+  it('always calls inherited observers', function(done) {
+    var notifications = [];
+    TestModel.observe('event', pushAndNext(notifications, 'base'));
+
+    var Child = TestModel.extend('Child');
+    // Important: there are no observers on the Child model
+
+    Child.notify('event', {}, function(err) {
+      if (err) return done(err);
+      notifications.should.eql(['base']);
+      done();
+    });
+  });
+
   it('handles no observers', function(done) {
     TestModel.notify('no-observers', {}, function(err) {
       // the test passes when no error was raised
