@@ -946,12 +946,96 @@ module.exports = function(connectorFactory, should) {
       });
     });
 
-    //
-    // TODO(bajtos) DISCUSSION POINT update/updateAll
-    // OOPS, THERE IS NO WAY HOW TO EMIT before-save HOOK FROM JUGGLER
-    // after-save can be emitted by manually querying the DB, that's expensive
-    // alternatively after-save hook can be emitted with the `where` query
-    // instead of the model(s) that are updated
+    describe('PersistedModel.updateAll', function() {
+      it('triggers `query` hook', function(done) {
+        TestModel.observe('query', pushContextAndNext());
+
+        TestModel.updateAll(
+          { name: 'searched' },
+          { name: 'updated' },
+          function(err, instance) {
+            if (err) return done(err);
+            observedContexts.should.eql(aTestModelCtx({ query: {
+              where: { name: 'searched' }
+            }}));
+            done();
+          });
+      });
+
+      it('applies updates from `query` hook', function(done) {
+        TestModel.observe('query', function(ctx, next) {
+          ctx.query = { where: { id: { neq: existingInstance.id } } };
+          next();
+        });
+
+        TestModel.updateAll(
+          { id: existingInstance.id },
+          { name: 'new name' },
+          function(err) {
+            if (err) return done(err);
+            findTestModels({ fields: ['id', 'name' ] }, function(err, list) {
+              if (err) return done(err);
+              (list||[]).map(toObject).should.eql([
+                { id: existingInstance.id, name: existingInstance.name },
+                { id: '2', name: 'new name' }
+              ]);
+              done();
+            });
+        });
+      });
+
+      it('triggers `before save` hook', function(done) {
+        TestModel.observe('before save', pushContextAndNext());
+
+        TestModel.updateAll(
+          { name: 'searched' },
+          { name: 'updated' },
+          function(err, instance) {
+            if (err) return done(err);
+            observedContexts.should.eql(aTestModelCtx({
+              where: { name: 'searched' },
+              data: { name: 'updated' },
+            }));
+            done();
+          });
+      });
+
+      it('applies updates from `before save` hook', function(done) {
+        TestModel.observe('before save', function(ctx, next) {
+          ctx.data = { name: 'hooked', custom: 'added' };
+          next();
+        });
+
+        TestModel.updateAll(
+          { id: existingInstance.id },
+          { name: 'updated name' },
+          function(err) {
+            if (err) return done(err);
+            loadTestModel(existingInstance.id, function(err, instance) {
+              if (err) return done(err);
+              instance.should.have.property('name', 'hooked');
+              instance.should.have.property('custom', 'added');
+              done();
+            });
+          });
+      });
+
+      it('triggers `after save` hook', function(done) {
+        TestModel.observe('after save', pushContextAndNext());
+
+        TestModel.updateAll(
+          { id: existingInstance.id },
+          { name: 'updated name' },
+          function(err) {
+            if (err) return done(err);
+            observedContexts.should.eql(aTestModelCtx({
+              where: { id: existingInstance.id },
+              data: { name: 'updated name' }
+            }));
+            done();
+          });
+      });
+    });
 
     function pushContextAndNext() {
       return function(context, next) {
@@ -1007,6 +1091,10 @@ module.exports = function(connectorFactory, should) {
       }
 
       TestModel.find(query, { notify: false }, cb);
+    }
+
+    function loadTestModel(id, cb) {
+      TestModel.findOne({ where: { id: id } }, { notify: false }, cb);
     }
   });
 
