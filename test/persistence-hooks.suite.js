@@ -30,8 +30,8 @@ module.exports = function(connectorFactory, should) {
     });
 
     describe('PersistedModel.find', function() {
-      it('triggers `before load` hook', function(done) {
-        TestModel.observe('before load', pushContextAndNext());
+      it('triggers `query` hook', function(done) {
+        TestModel.observe('query', pushContextAndNext());
 
         TestModel.find({ where: { id: '1' } }, function(err, list) {
           if (err) return done(err);
@@ -40,8 +40,8 @@ module.exports = function(connectorFactory, should) {
         });
       });
 
-      it('aborts when `before load` hook fails', function(done) {
-        TestModel.observe('before load', nextWithError(expectedError));
+      it('aborts when `query` hook fails', function(done) {
+        TestModel.observe('query', nextWithError(expectedError));
 
         TestModel.find(function(err, list) {
           [err].should.eql([expectedError]);
@@ -49,8 +49,8 @@ module.exports = function(connectorFactory, should) {
         });
       });
 
-      it('applies updates from `before load` hook', function(done) {
-        TestModel.observe('before load', function(ctx, next) {
+      it('applies updates from `query` hook', function(done) {
+        TestModel.observe('query', function(ctx, next) {
           ctx.query.where = { id: existingModel.id };
           next();
         });
@@ -205,8 +205,8 @@ module.exports = function(connectorFactory, should) {
     });
 
     describe('PersistedModel.findOrCreate', function() {
-      it('triggers `before load` hook', function(done) {
-        TestModel.observe('before load', pushContextAndNext());
+      it('triggers `query` hook', function(done) {
+        TestModel.observe('query', pushContextAndNext());
 
         TestModel.findOrCreate(
           { where: { name: 'new-record' } },
@@ -284,7 +284,7 @@ module.exports = function(connectorFactory, should) {
           { name: 'new-record' },
           function(err, record, created) {
             triggered.should.eql([
-              'before load',
+              'query',
               'before save',
               'after save'
             ]);
@@ -292,8 +292,8 @@ module.exports = function(connectorFactory, should) {
           });
       });
 
-      it('aborts when `before load` hook fails', function(done) {
-        TestModel.observe('before load', nextWithError(expectedError));
+      it('aborts when `query` hook fails', function(done) {
+        TestModel.observe('query', nextWithError(expectedError));
 
         TestModel.findOrCreate(
           { where: { id: 'does-not-exist' } },
@@ -345,8 +345,8 @@ module.exports = function(connectorFactory, should) {
     });
 
     describe('PersistedModel.count', function(done) {
-      it('triggers `before load` hook', function(done) {
-        TestModel.observe('before load', pushContextAndNext());
+      it('triggers `query` hook', function(done) {
+        TestModel.observe('query', pushContextAndNext());
 
         TestModel.count({ id: existingModel.id }, function(err, count) {
           if (err) return done(err);
@@ -357,8 +357,8 @@ module.exports = function(connectorFactory, should) {
         });
       });
 
-      it('applies updates from `before load` hook', function(done) {
-        TestModel.observe('before load', function(ctx, next) {
+      it('applies updates from `query` hook', function(done) {
+        TestModel.observe('query', function(ctx, next) {
           ctx.query.where = { id: existingModel.id };
           next();
         });
@@ -551,18 +551,18 @@ module.exports = function(connectorFactory, should) {
 
     describe('PersistedModel.updateOrCreate', function() {
       // TODO(bajtos) DISCUSSION POINT
-      // Should we trigger the `before load` hook at all?
-      // Use case in mind: `before load` hook adds the current userId
+      // Should we trigger the `query` hook at all?
+      // Use case in mind: `query` hook adds the current userId
       // to the query to ensure that the user is not accessing an instance
       // he is not allowed to.
       // But then: this should be handled by ACLs, not by hooks right?
       //
-      // The trouble with `before load` hook:
+      // The trouble with `query` hook:
       // How to pass the modified "where" filter to connector's
       // updateOrCreate method, when the method signature does not
       // accept extra where conditions?
-      it.skip('triggers `before load` hook on create', function(done) {
-        TestModel.observe('before load', pushContextAndNext());
+      it.skip('triggers `query` hook on create', function(done) {
+        TestModel.observe('query', pushContextAndNext());
 
         TestModel.updateOrCreate(
           { id: 'not-found', name: 'not found' },
@@ -575,8 +575,8 @@ module.exports = function(connectorFactory, should) {
           });
       });
 
-      it.skip('triggers `before load` hook on update', function(done) {
-        TestModel.observe('before load', pushContextAndNext());
+      it.skip('triggers `query` hook on update', function(done) {
+        TestModel.observe('query', pushContextAndNext());
 
         TestModel.updateOrCreate(
           { id: existingModel.id, name: 'new name' },
@@ -589,8 +589,8 @@ module.exports = function(connectorFactory, should) {
           });
       });
 
-      it('does not trigger `before load` on missing id', function(done) {
-        TestModel.observe('before load', pushContextAndNext());
+      it('does not trigger `query` on missing id', function(done) {
+        TestModel.observe('query', pushContextAndNext());
 
         TestModel.updateOrCreate(
           { name: 'new name' },
@@ -601,8 +601,8 @@ module.exports = function(connectorFactory, should) {
           });
       });
 
-      it.skip('applies updates from `before load` hook when found');
-      it.skip('applies updates from `before load` hook when not found');
+      it.skip('applies updates from `query` hook when found');
+      it.skip('applies updates from `query` hook when not found');
 
       it('triggers `before save` hook on update', function(done) {
         TestModel.observe('before save', pushContextAndNext());
@@ -829,7 +829,7 @@ module.exports = function(connectorFactory, should) {
       });
 
       // TODO(bajtos) DISCUSSION POINT This has a similar problem as
-      // `updateOrCreate` and `before load` hook. When the hook modifies
+      // `updateOrCreate` and `query` hook. When the hook modifies
       // the "where" query, there isn't a straightforward way how to
       // apply the updated query
       it.skip('applies updates from `before delete` hook', function(done) {
