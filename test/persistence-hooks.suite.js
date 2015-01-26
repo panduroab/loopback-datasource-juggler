@@ -5,7 +5,7 @@ var traverse = require('traverse');
 module.exports = function(connectorFactory, should) {
   describe('Persistence hooks', function() {
     var observedContexts, expectedError, observersCalled;
-    var ds, TestModel, existingModel;
+    var ds, TestModel, existingInstance;
 
     beforeEach(function setupEnv(done) {
       observedContexts = "hook not called";
@@ -18,9 +18,9 @@ module.exports = function(connectorFactory, should) {
         id: { type: String, id: true }
       });
 
-      TestModel.create({ name: 'first' }, function(err, model) {
+      TestModel.create({ name: 'first' }, function(err, instance) {
         if (err) return done(err);
-        existingModel = model;
+        existingInstance = instance;
 
         TestModel.create({ name: 'second' }, function(err) {
           if (err) return done(err);
@@ -51,12 +51,12 @@ module.exports = function(connectorFactory, should) {
 
       it('applies updates from `query` hook', function(done) {
         TestModel.observe('query', function(ctx, next) {
-          ctx.query.where = { id: existingModel.id };
+          ctx.query.where = { id: existingInstance.id };
           next();
         });
 
         TestModel.find(function(err, list) {
-          list.map(get('name')).should.eql([existingModel.name]);
+          list.map(get('name')).should.eql([existingInstance.name]);
           done();
         });
       });
@@ -68,9 +68,9 @@ module.exports = function(connectorFactory, should) {
       it('triggers `before save` hook', function(done) {
         TestModel.observe('before save', pushContextAndNext());
 
-        TestModel.create({ name: 'created' }, function(err, model) {
+        TestModel.create({ name: 'created' }, function(err, instance) {
           if (err) return done(err);
-          observedContexts.should.eql({ model: {
+          observedContexts.should.eql({ instance: {
             id: undefined,
             name: 'created'
           }});
@@ -81,7 +81,7 @@ module.exports = function(connectorFactory, should) {
       it('aborts when `before save` hook fails', function(done) {
         TestModel.observe('before save', nextWithError(expectedError));
 
-        TestModel.create({ name: 'created' }, function(err, model) {
+        TestModel.create({ name: 'created' }, function(err, instance) {
           [err].should.eql([expectedError]);
           done();
         });
@@ -89,13 +89,13 @@ module.exports = function(connectorFactory, should) {
 
       it('applies updates from `before save` hook', function(done) {
         TestModel.observe('before save', function(ctx, next) {
-          ctx.model.should.be.instanceOf(TestModel);
-          ctx.model.custom = 'hook data';
+          ctx.instance.should.be.instanceOf(TestModel);
+          ctx.instance.custom = 'hook data';
           next();
         });
 
-        TestModel.create({ name: 'a-name' }, function(err, model) {
-          model.should.have.property('custom', 'hook data');
+        TestModel.create({ name: 'a-name' }, function(err, instance) {
+          instance.should.have.property('custom', 'hook data');
           done();
         });
       });
@@ -108,8 +108,8 @@ module.exports = function(connectorFactory, should) {
           function(err, list) {
             if (err) return done(err);
             observedContexts.should.eql([
-              { model: { id: undefined, name: 'one' } },
-              { model: { id: undefined, name: 'two' } },
+              { instance: { id: undefined, name: 'one' } },
+              { instance: { id: undefined, name: 'two' } },
             ]);
             done();
           });
@@ -128,10 +128,10 @@ module.exports = function(connectorFactory, should) {
       it('triggers `after save` hook', function(done) {
         TestModel.observe('after save', pushContextAndNext());
 
-        TestModel.create({ name: 'created' }, function(err, model) {
+        TestModel.create({ name: 'created' }, function(err, instance) {
           if (err) return done(err);
-          observedContexts.should.eql({ model: {
-            id: model.id,
+          observedContexts.should.eql({ instance: {
+            id: instance.id,
             name: 'created'
           }});
           done();
@@ -141,7 +141,7 @@ module.exports = function(connectorFactory, should) {
       it('aborts when `after save` hook fails', function(done) {
         TestModel.observe('after save', nextWithError(expectedError));
 
-        TestModel.create({ name: 'created' }, function(err, model) {
+        TestModel.create({ name: 'created' }, function(err, instance) {
           [err].should.eql([expectedError]);
           done();
         });
@@ -149,13 +149,13 @@ module.exports = function(connectorFactory, should) {
 
       it('applies updates from `after save` hook', function(done) {
         TestModel.observe('after save', function(ctx, next) {
-          ctx.model.should.be.instanceOf(TestModel);
-          ctx.model.custom = 'hook data';
+          ctx.instance.should.be.instanceOf(TestModel);
+          ctx.instance.custom = 'hook data';
           next();
         });
 
-        TestModel.create({ name: 'a-name' }, function(err, model) {
-          model.should.have.property('custom', 'hook data');
+        TestModel.create({ name: 'a-name' }, function(err, instance) {
+          instance.should.have.property('custom', 'hook data');
           done();
         });
       });
@@ -168,8 +168,8 @@ module.exports = function(connectorFactory, should) {
           function(err, list) {
             if (err) return done(err);
             observedContexts.should.eql([
-              { model: { id: list[0].id, name: 'one' } },
-              { model: { id: list[1].id, name: 'two' } },
+              { instance: { id: list[0].id, name: 'one' } },
+              { instance: { id: list[1].id, name: 'two' } },
             ]);
             done();
           });
@@ -177,7 +177,7 @@ module.exports = function(connectorFactory, should) {
 
       it('emits `after save` when some models were not saved', function(done) {
         TestModel.observe('before save', function(ctx, next) {
-          if (ctx.model.name === 'fail')
+          if (ctx.instance.name === 'fail')
             next(expectedError);
           else
             next();
@@ -197,7 +197,7 @@ module.exports = function(connectorFactory, should) {
             list.map(get('name')).should.eql(['ok', 'fail']);
 
             observedContexts.should.eql({
-              model: { id: list[0].id, name: 'ok' }
+              instance: { id: list[0].id, name: 'ok' }
             });
             done();
           });
@@ -230,13 +230,13 @@ module.exports = function(connectorFactory, should) {
         TestModel.observe('before save', pushContextAndNext());
 
         TestModel.findOrCreate(
-          { where: { name: existingModel.name } },
-          { name: existingModel.name },
+          { where: { name: existingInstance.name } },
+          { name: existingInstance.name },
           function(err, record, created) {
             if (err) return done(err);
-            observedContexts.should.eql({ model: {
+            observedContexts.should.eql({ instance: {
               id: undefined,
-              name: existingModel.name
+              name: existingInstance.name
             }});
             done();
           });
@@ -250,7 +250,7 @@ module.exports = function(connectorFactory, should) {
           { name: 'new-record' },
           function(err, record, created) {
             if (err) return done(err);
-            observedContexts.should.eql({ model: {
+            observedContexts.should.eql({ instance: {
               id: undefined,
               name: 'new-record'
             }});
@@ -298,7 +298,7 @@ module.exports = function(connectorFactory, should) {
         TestModel.findOrCreate(
           { where: { id: 'does-not-exist' } },
           { name: 'does-not-exist' },
-          function(err, model) {
+          function(err, instance) {
             [err].should.eql([expectedError]);
             done();
           });
@@ -310,7 +310,7 @@ module.exports = function(connectorFactory, should) {
         TestModel.findOrCreate(
           { where: { id: 'does-not-exist' } },
           { name: 'does-not-exist' },
-          function(err, model) {
+          function(err, instance) {
             [err].should.eql([expectedError]);
             done();
           });
@@ -322,9 +322,9 @@ module.exports = function(connectorFactory, should) {
         TestModel.findOrCreate(
           { where: { name: 'new name' } },
           { name: 'new name' },
-          function(err, model) {
-            observedContexts.should.eql({ model: {
-              id: model.id,
+          function(err, instance) {
+            observedContexts.should.eql({ instance: {
+              id: instance.id,
               name: 'new name'
             }});
             done();
@@ -335,9 +335,9 @@ module.exports = function(connectorFactory, should) {
         TestModel.observe('after save', pushContextAndNext());
 
         TestModel.findOrCreate(
-          { where: { id: existingModel.id } },
-          { name: existingModel.name },
-          function(err, model) {
+          { where: { id: existingInstance.id } },
+          { name: existingInstance.name },
+          function(err, instance) {
             observedContexts.should.eql("hook not called");
             done();
           });
@@ -348,10 +348,10 @@ module.exports = function(connectorFactory, should) {
       it('triggers `query` hook', function(done) {
         TestModel.observe('query', pushContextAndNext());
 
-        TestModel.count({ id: existingModel.id }, function(err, count) {
+        TestModel.count({ id: existingInstance.id }, function(err, count) {
           if (err) return done(err);
           observedContexts.should.eql({ query: {
-            where: { id: existingModel.id }
+            where: { id: existingInstance.id }
           }});
           done();
         });
@@ -359,7 +359,7 @@ module.exports = function(connectorFactory, should) {
 
       it('applies updates from `query` hook', function(done) {
         TestModel.observe('query', function(ctx, next) {
-          ctx.query.where = { id: existingModel.id };
+          ctx.query.where = { id: existingInstance.id };
           next();
         });
 
@@ -374,11 +374,11 @@ module.exports = function(connectorFactory, should) {
       it('triggers `before save` hook', function(done) {
         TestModel.observe('before save', pushContextAndNext());
 
-        existingModel.name = 'changed';
-        existingModel.save(function(err, model) {
+        existingInstance.name = 'changed';
+        existingInstance.save(function(err, instance) {
           if (err) return done(err);
-          observedContexts.should.eql({ model: {
-            id: existingModel.id,
+          observedContexts.should.eql({ instance: {
+            id: existingInstance.id,
             name: 'changed'
           }});
           done();
@@ -388,7 +388,7 @@ module.exports = function(connectorFactory, should) {
       it('aborts when `before save` hook fails', function(done) {
         TestModel.observe('before save', nextWithError(expectedError));
 
-        existingModel.save(function(err, model) {
+        existingInstance.save(function(err, instance) {
           [err].should.eql([expectedError]);
           done();
         });
@@ -396,13 +396,13 @@ module.exports = function(connectorFactory, should) {
 
       it('applies updates from `before save` hook', function(done) {
         TestModel.observe('before save', function(ctx, next) {
-          ctx.model.should.be.instanceOf(TestModel);
-          ctx.model.custom = 'hook data';
+          ctx.instance.should.be.instanceOf(TestModel);
+          ctx.instance.custom = 'hook data';
           next();
         });
 
-        existingModel.save(function(err, model) {
-          model.should.have.property('custom', 'hook data');
+        existingInstance.save(function(err, instance) {
+          instance.should.have.property('custom', 'hook data');
           done();
         });
       });
@@ -410,7 +410,7 @@ module.exports = function(connectorFactory, should) {
       it('validates model after `before save` hook', function(done) {
         TestModel.observe('before save', invalidateTestModel());
 
-        existingModel.save(function(err) {
+        existingInstance.save(function(err) {
           (err || {}).should.be.instanceOf(ValidationError);
           (err.details.codes || {}).should.eql({ name: ['presence'] });
           done();
@@ -420,11 +420,11 @@ module.exports = function(connectorFactory, should) {
       it('triggers `after save` hook', function(done) {
         TestModel.observe('after save', pushContextAndNext());
 
-        existingModel.name = 'changed';
-        existingModel.save(function(err, model) {
+        existingInstance.name = 'changed';
+        existingInstance.save(function(err, instance) {
           if (err) return done(err);
-          observedContexts.should.eql({ model: {
-            id: existingModel.id,
+          observedContexts.should.eql({ instance: {
+            id: existingInstance.id,
             name: 'changed'
           }});
           done();
@@ -434,7 +434,7 @@ module.exports = function(connectorFactory, should) {
       it('aborts when `after save` hook fails', function(done) {
         TestModel.observe('after save', nextWithError(expectedError));
 
-        existingModel.save(function(err, model) {
+        existingInstance.save(function(err, instance) {
           [err].should.eql([expectedError]);
           done();
         });
@@ -442,13 +442,13 @@ module.exports = function(connectorFactory, should) {
 
       it('applies updates from `after save` hook', function(done) {
         TestModel.observe('after save', function(ctx, next) {
-          ctx.model.should.be.instanceOf(TestModel);
-          ctx.model.custom = 'hook data';
+          ctx.instance.should.be.instanceOf(TestModel);
+          ctx.instance.custom = 'hook data';
           next();
         });
 
-        existingModel.save(function(err, model) {
-          model.should.have.property('custom', 'hook data');
+        existingInstance.save(function(err, instance) {
+          instance.should.have.property('custom', 'hook data');
           done();
         });
       });
@@ -458,11 +458,11 @@ module.exports = function(connectorFactory, should) {
       it('triggers `before save` hook', function(done) {
         TestModel.observe('before save', pushContextAndNext());
 
-        existingModel.name = 'changed';
-        existingModel.updateAttributes({ name: 'changed' }, function(err) {
+        existingInstance.name = 'changed';
+        existingInstance.updateAttributes({ name: 'changed' }, function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ model: {
-            id: existingModel.id,
+          observedContexts.should.eql({ instance: {
+            id: existingInstance.id,
             name: 'changed'
           }});
           done();
@@ -472,7 +472,7 @@ module.exports = function(connectorFactory, should) {
       it('aborts when `before save` hook fails', function(done) {
         TestModel.observe('before save', nextWithError(expectedError));
 
-        existingModel.updateAttributes(function(err) {
+        existingInstance.updateAttributes(function(err) {
           [err].should.eql([expectedError]);
           done();
         });
@@ -480,20 +480,20 @@ module.exports = function(connectorFactory, should) {
 
       it('applies updates from `before save` hook', function(done) {
         TestModel.observe('before save', function(ctx, next) {
-          ctx.model.should.be.instanceOf(TestModel);
-          ctx.model.custom = 'extra data';
-          ctx.model.name = 'hooked name';
-          ctx.model.removed = undefined;
+          ctx.instance.should.be.instanceOf(TestModel);
+          ctx.instance.custom = 'extra data';
+          ctx.instance.name = 'hooked name';
+          ctx.instance.removed = undefined;
           next();
         });
 
-        existingModel.updateAttributes(function(err) {
+        existingInstance.updateAttributes(function(err) {
           if (err) return done(err);
           // We must query the database here because `updateAttributes`
           // returns effectively `this`, not the data from the datasource
-          TestModel.findById(existingModel.id, function(err, model) {
-            model.toObject(true).should.eql({
-              id: existingModel.id,
+          TestModel.findById(existingInstance.id, function(err, instance) {
+            instance.toObject(true).should.eql({
+              id: existingInstance.id,
               name: 'hooked name',
               custom: 'extra data'
             });
@@ -505,7 +505,7 @@ module.exports = function(connectorFactory, should) {
       it('validates model after `before save` hook', function(done) {
         TestModel.observe('before save', invalidateTestModel());
 
-        existingModel.updateAttributes(function(err) {
+        existingInstance.updateAttributes(function(err) {
           (err || {}).should.be.instanceOf(ValidationError);
           (err.details.codes || {}).should.eql({ name: ['presence'] });
           done();
@@ -515,11 +515,11 @@ module.exports = function(connectorFactory, should) {
       it('triggers `after save` hook', function(done) {
         TestModel.observe('after save', pushContextAndNext());
 
-        existingModel.name = 'changed';
-        existingModel.updateAttributes({ name: 'changed' }, function(err) {
+        existingInstance.name = 'changed';
+        existingInstance.updateAttributes({ name: 'changed' }, function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ model: {
-            id: existingModel.id,
+          observedContexts.should.eql({ instance: {
+            id: existingInstance.id,
             name: 'changed'
           }});
           done();
@@ -529,7 +529,7 @@ module.exports = function(connectorFactory, should) {
       it('aborts when `after save` hook fails', function(done) {
         TestModel.observe('after save', nextWithError(expectedError));
 
-        existingModel.updateAttributes(function(err) {
+        existingInstance.updateAttributes(function(err) {
           [err].should.eql([expectedError]);
           done();
         });
@@ -537,13 +537,13 @@ module.exports = function(connectorFactory, should) {
 
       it('applies updates from `after save` hook', function(done) {
         TestModel.observe('after save', function(ctx, next) {
-          ctx.model.should.be.instanceOf(TestModel);
-          ctx.model.custom = 'hook data';
+          ctx.instance.should.be.instanceOf(TestModel);
+          ctx.instance.custom = 'hook data';
           next();
         });
 
-        existingModel.updateAttributes(function(err, model) {
-          model.should.have.property('custom', 'hook data');
+        existingInstance.updateAttributes(function(err, instance) {
+          instance.should.have.property('custom', 'hook data');
           done();
         });
       });
@@ -566,7 +566,7 @@ module.exports = function(connectorFactory, should) {
 
         TestModel.updateOrCreate(
           { id: 'not-found', name: 'not found' },
-          function(err, model) {
+          function(err, instance) {
             if (err) return done(err);
             observedContexts.should.eql({ query: {
               where: { id: 'not-found' }
@@ -579,11 +579,11 @@ module.exports = function(connectorFactory, should) {
         TestModel.observe('query', pushContextAndNext());
 
         TestModel.updateOrCreate(
-          { id: existingModel.id, name: 'new name' },
-          function(err, model) {
+          { id: existingInstance.id, name: 'new name' },
+          function(err, instance) {
             if (err) return done(err);
             observedContexts.should.eql({ query: {
-              where: { id: existingModel.id }
+              where: { id: existingInstance.id }
             }});
             done();
           });
@@ -594,7 +594,7 @@ module.exports = function(connectorFactory, should) {
 
         TestModel.updateOrCreate(
           { name: 'new name' },
-          function(err, model) {
+          function(err, instance) {
             if (err) return done(err);
             observedContexts.should.equal('hook not called');
             done();
@@ -608,11 +608,11 @@ module.exports = function(connectorFactory, should) {
         TestModel.observe('before save', pushContextAndNext());
 
         TestModel.updateOrCreate(
-          { id: existingModel.id, name: 'updated name' },
-          function(err, model) {
+          { id: existingInstance.id, name: 'updated name' },
+          function(err, instance) {
             if (err) return done(err);
-            observedContexts.should.eql({ model: {
-              id: existingModel.id,
+            observedContexts.should.eql({ instance: {
+              id: existingInstance.id,
               name: 'updated name'
             }});
             done();
@@ -624,9 +624,9 @@ module.exports = function(connectorFactory, should) {
 
         TestModel.updateOrCreate(
           { id: 'new-id', name: 'a name' },
-          function(err, model) {
+          function(err, instance) {
             if (err) return done(err);
-            observedContexts.should.eql({ model: {
+            observedContexts.should.eql({ instance: {
               id: 'new-id',
               name: 'a name'
             }});
@@ -645,14 +645,14 @@ module.exports = function(connectorFactory, should) {
           TestModel.observe('before save', pushContextAndNext());
 
           TestModel.updateOrCreate(
-            { id: existingModel.id },
-            function(err, model) {
+            { id: existingInstance.id },
+            function(err, instance) {
               if (err) return done(err);
-              var name = observedContexts.model.name;
-              (name === undefined || name === existingModel.name)
+              var name = observedContexts.instance.name;
+              (name === undefined || name === existingInstance.name)
                 .should.be.equal(true,
                   'name should be either undefined or ' +
-                  JSON.stringify(existingModel.name) + '; was: ' +
+                  JSON.stringify(existingInstance.name) + '; was: ' +
                   JSON.stringify(name));
               done();
             });
@@ -660,30 +660,30 @@ module.exports = function(connectorFactory, should) {
 
       it('applies updates from `before save` hook on update', function(done) {
         TestModel.observe('before save', function(ctx, next) {
-          ctx.model.name = 'hooked';
+          ctx.instance.name = 'hooked';
           next();
         });
 
         TestModel.updateOrCreate(
-          { id: existingModel.id, name: 'updated name' },
-          function(err, model) {
+          { id: existingInstance.id, name: 'updated name' },
+          function(err, instance) {
             if (err) return done(err);
-            model.name.should.equal('hooked');
+            instance.name.should.equal('hooked');
             done();
           });
       });
 
       it('applies updates from `before save` hook on create', function(done) {
         TestModel.observe('before save', function(ctx, next) {
-          ctx.model.name = 'hooked';
+          ctx.instance.name = 'hooked';
           next();
         });
 
         TestModel.updateOrCreate(
           { id: 'new-id', name: 'new name' },
-          function(err, model) {
+          function(err, instance) {
             if (err) return done(err);
-            model.name.should.equal('hooked');
+            instance.name.should.equal('hooked');
             done();
           });
       });
@@ -694,8 +694,8 @@ module.exports = function(connectorFactory, should) {
         TestModel.observe('before save', invalidateTestModel());
 
         TestModel.updateOrCreate(
-          { id: existingModel.id, name: 'updated name' },
-          function(err, model) {
+          { id: existingInstance.id, name: 'updated name' },
+          function(err, instance) {
             (err || {}).should.be.instanceOf(ValidationError);
             (err.details.codes || {}).should.eql({ name: ['presence'] });
             done();
@@ -709,7 +709,7 @@ module.exports = function(connectorFactory, should) {
 
         TestModel.updateOrCreate(
           { id: 'new-id', name: 'new name' },
-          function(err, model) {
+          function(err, instance) {
             (err || {}).should.be.instanceOf(ValidationError);
             (err.details.codes || {}).should.eql({ name: ['presence'] });
             done();
@@ -721,11 +721,11 @@ module.exports = function(connectorFactory, should) {
         TestModel.observe('after save', pushContextAndNext());
 
         TestModel.updateOrCreate(
-          { id: existingModel.id, name: 'updated name' },
-          function(err, model) {
+          { id: existingInstance.id, name: 'updated name' },
+          function(err, instance) {
             if (err) return done(err);
-            observedContexts.should.eql({ model: {
-              id: existingModel.id,
+            observedContexts.should.eql({ instance: {
+              id: existingInstance.id,
               name: 'updated name'
             }});
             done();
@@ -737,9 +737,9 @@ module.exports = function(connectorFactory, should) {
 
         TestModel.updateOrCreate(
           { id: 'new-id', name: 'a name' },
-          function(err, model) {
+          function(err, instance) {
             if (err) return done(err);
-            observedContexts.should.eql({ model: {
+            observedContexts.should.eql({ instance: {
               id: 'new-id',
               name: 'a name'
             }});
@@ -754,9 +754,9 @@ module.exports = function(connectorFactory, should) {
       it('triggers `before delete` hook with query', function(done) {
         TestModel.observe('before delete', pushContextAndNext());
 
-        TestModel.deleteAll({ name: existingModel.name }, function(err) {
+        TestModel.deleteAll({ name: existingInstance.name }, function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ where: { name: existingModel.name } });
+          observedContexts.should.eql({ where: { name: existingInstance.name } });
           done();
         });
       });
@@ -773,7 +773,7 @@ module.exports = function(connectorFactory, should) {
 
       it('applies updates from `before delete` hook', function(done) {
         TestModel.observe('before delete', function(ctx, next) {
-          ctx.where.id =  { neq: existingModel.id };
+          ctx.where.id =  { neq: existingInstance.id };
           next();
         });
 
@@ -781,7 +781,7 @@ module.exports = function(connectorFactory, should) {
           if (err) return done(err);
           TestModel.find(function(err, list) {
             if (err) return done(err);
-            (list || []).map(get('id')).should.eql([existingModel.id]);
+            (list || []).map(get('id')).should.eql([existingInstance.id]);
             done();
           });
         });
@@ -800,9 +800,9 @@ module.exports = function(connectorFactory, should) {
       it('triggers `after delete` hook without query', function(done) {
         TestModel.observe('after delete', pushContextAndNext());
 
-        TestModel.deleteAll({ name: existingModel.name }, function(err) {
+        TestModel.deleteAll({ name: existingInstance.name }, function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ where: { name: existingModel.name } });
+          observedContexts.should.eql({ where: { name: existingInstance.name } });
           done();
         });
       });
@@ -821,9 +821,9 @@ module.exports = function(connectorFactory, should) {
       it('triggers `before delete` hook', function(done) {
         TestModel.observe('before delete', pushContextAndNext());
 
-        existingModel.delete(function(err) {
+        existingInstance.delete(function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ where: { id: existingModel.id } });
+          observedContexts.should.eql({ where: { id: existingInstance.id } });
           done();
         });
       });
@@ -834,16 +834,16 @@ module.exports = function(connectorFactory, should) {
       // apply the updated query
       it.skip('applies updates from `before delete` hook', function(done) {
         TestModel.observe('before delete', function(ctx, next) {
-          ctx.where.id = { neq: existingModel.id };
+          ctx.where.id = { neq: existingInstance.id };
           next();
         });
 
-        existingModel.delete(function(err) {
+        existingInstance.delete(function(err) {
           if (err) return done(err);
           TestModel.find(function(err, list) {
             if (err) return done(err);
             var ids = (list || []).map(get('id'));
-            ids.should.include(existingModel.id);
+            ids.should.include(existingInstance.id);
             done();
           });
         });
@@ -852,9 +852,9 @@ module.exports = function(connectorFactory, should) {
       it('triggers `after delete` hook', function(done) {
         TestModel.observe('after delete', pushContextAndNext());
 
-        existingModel.delete(function(err) {
+        existingInstance.delete(function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ where: { id: existingModel.id } });
+          observedContexts.should.eql({ where: { id: existingInstance.id } });
           done();
         });
       });
@@ -862,9 +862,9 @@ module.exports = function(connectorFactory, should) {
       it('triggers `after delete` hook without query', function(done) {
         TestModel.observe('after delete', pushContextAndNext());
 
-        TestModel.deleteAll({ name: existingModel.name }, function(err) {
+        TestModel.deleteAll({ name: existingInstance.name }, function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ where: { name: existingModel.name } });
+          observedContexts.should.eql({ where: { name: existingInstance.name } });
           done();
         });
       });
@@ -921,7 +921,7 @@ module.exports = function(connectorFactory, should) {
 
     function invalidateTestModel() {
       return function(context, next) {
-        context.model.name = '';
+        context.instance.name = '';
         next();
       };
     }
