@@ -593,10 +593,8 @@ module.exports = function(connectorFactory, should) {
       });
 
       it('applies updates from `query` hook when found', function(done) {
-        var updateQuery = true;
         TestModel.observe('query', function(ctx, next) {
-          if (updateQuery)
-            ctx.query = { where: { id: { neq: existingInstance.id } } };
+          ctx.query = { where: { id: { neq: existingInstance.id } } };
           next();
         });
 
@@ -604,8 +602,7 @@ module.exports = function(connectorFactory, should) {
           { id: existingInstance.id, name: 'new name' },
           function(err, instance) {
             if (err) return done(err);
-            updateQuery = false;
-            TestModel.find({ fields: ['id', 'name' ] }, function(err, list) {
+            findTestModels({ fields: ['id', 'name' ] }, function(err, list) {
               if (err) return done(err);
               (list||[]).map(toObject).should.eql([
                 { id: existingInstance.id, name: existingInstance.name },
@@ -617,10 +614,8 @@ module.exports = function(connectorFactory, should) {
       });
 
       it('applies updates from `query` hook when not found', function(done) {
-        var updateQuery = true;
         TestModel.observe('query', function(ctx, next) {
-          if (updateQuery)
-            ctx.query = { where: { id: 'not-found' } };
+          ctx.query = { where: { id: 'not-found' } };
           next();
         });
 
@@ -628,8 +623,7 @@ module.exports = function(connectorFactory, should) {
           { id: existingInstance.id, name: 'new name' },
           function(err, instance) {
             if (err) return done(err);
-            updateQuery = false;
-            TestModel.find({ fields: ['id', 'name' ] }, function(err, list) {
+            findTestModels({ fields: ['id', 'name' ] }, function(err, list) {
               if (err) return done(err);
               (list||[]).map(toObject).should.eql([
                 { id: existingInstance.id, name: existingInstance.name },
@@ -639,6 +633,24 @@ module.exports = function(connectorFactory, should) {
               done();
             });
         });
+      });
+
+      it('triggers hooks only once', function(done) {
+        TestModel.observe('query', pushNameAndNext('query'));
+        TestModel.observe('before save', pushNameAndNext('before save'));
+
+        TestModel.observe('query', function(ctx, next) {
+          ctx.query = { where: { id: { neq: existingInstance.id } } };
+          next();
+        });
+
+        TestModel.updateOrCreate(
+          { id: 'ignored', name: 'new name' },
+          function(err, instance) {
+            if (err) return done(err);
+            observersCalled.should.eql(['query', 'before save']);
+            done();
+          });
       });
 
       it('triggers `before save` hook on update', function(done) {
@@ -783,8 +795,6 @@ module.exports = function(connectorFactory, should) {
             done();
           });
       });
-
-      // TODO: order of hooks (load, save) - only if we notify load hooks
     });
 
     describe('PersistedModel.deleteAll', function() {
@@ -811,17 +821,14 @@ module.exports = function(connectorFactory, should) {
       });
 
       it('applies updates from `query` hook', function(done) {
-        var updateQuery = true;
         TestModel.observe('query', function(ctx, next) {
-          if (updateQuery)
-            ctx.query = { where: { id: { neq: existingInstance.id } } };
+          ctx.query = { where: { id: { neq: existingInstance.id } } };
           next();
         });
 
         TestModel.deleteAll(function(err) {
           if (err) return done(err);
-          updateQuery = false;
-          TestModel.find(function(err, list) {
+          findTestModels(function(err, list) {
             if (err) return done(err);
             (list || []).map(get('id')).should.eql([existingInstance.id]);
             done();
@@ -875,17 +882,14 @@ module.exports = function(connectorFactory, should) {
       });
 
       it('applies updated from `query` hook', function(done) {
-        var updateQuery = true;
         TestModel.observe('query', function(ctx, next) {
-          if (updateQuery)
-            ctx.query = { where: { id: { neq: existingInstance.id } } };
+          ctx.query = { where: { id: { neq: existingInstance.id } } };
           next();
         });
 
         existingInstance.delete(function(err) {
           if (err) return done(err);
-          updateQuery = false;
-          TestModel.find(function(err, list) {
+          findTestModels(function(err, list) {
             if (err) return done(err);
             (list || []).map(get('id')).should.eql([existingInstance.id]);
             done();
@@ -994,6 +998,15 @@ module.exports = function(connectorFactory, should) {
     function aTestModelCtx(ctx) {
       ctx.Model = TestModel;
       return deepCloneToObject(ctx);
+    }
+
+    function findTestModels(query, cb) {
+      if (cb === undefined && typeof query === 'function') {
+        cb = query;
+        query = null;
+      }
+
+      TestModel.find(query, { notify: false }, cb);
     }
   });
 
