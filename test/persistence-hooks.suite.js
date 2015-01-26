@@ -837,11 +837,7 @@ module.exports = function(connectorFactory, should) {
         });
       });
 
-      // TODO(bajtos) DISCUSSION POINT This has a similar problem as
-      // `updateOrCreate` and `query` hook. When the hook modifies
-      // the "where" query, there isn't a straightforward way how to
-      // apply the updated query
-      it.skip('applies updates from `before delete` hook', function(done) {
+      it('applies updates from `before delete` hook', function(done) {
         TestModel.observe('before delete', function(ctx, next) {
           ctx.where.id = { neq: existingInstance.id };
           next();
@@ -851,10 +847,25 @@ module.exports = function(connectorFactory, should) {
           if (err) return done(err);
           TestModel.find(function(err, list) {
             if (err) return done(err);
-            var ids = (list || []).map(get('id'));
-            ids.should.include(existingInstance.id);
+            var names = (list || []).map(get('name'));
+            names.should.eql([existingInstance.name]);
             done();
           });
+        });
+      });
+
+      it('triggers `before delete` only once', function(done) {
+        TestModel.observe('before delete', pushNameAndNext('before delete'));
+        TestModel.observe('after delete', pushNameAndNext('after delete'));
+        TestModel.observe('before delete', function(ctx, next) {
+          ctx.where.id = { neq: existingInstance.id };
+          next();
+        });
+
+        existingInstance.delete(function(err) {
+          if (err) return done(err);
+          observersCalled.should.eql(['before delete', 'after delete']);
+          done();
         });
       });
 
@@ -920,9 +931,10 @@ module.exports = function(connectorFactory, should) {
       };
     }
 
-    function addObserverNameAndNext(name) {
+    function pushNameAndNext(name) {
       return function(context, next) {
         observersCalled.push(name);
+        next();
       };
     }
 
