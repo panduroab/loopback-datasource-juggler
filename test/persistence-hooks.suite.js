@@ -35,7 +35,9 @@ module.exports = function(connectorFactory, should) {
 
         TestModel.find({ where: { id: '1' } }, function(err, list) {
           if (err) return done(err);
-          observedContexts.should.eql({ query: { where: { id: '1' } } });
+          observedContexts.should.eql(aTestModelCtx({
+            query: { where: { id: '1' } }
+          }));
           done();
         });
       });
@@ -70,10 +72,10 @@ module.exports = function(connectorFactory, should) {
 
         TestModel.create({ name: 'created' }, function(err, instance) {
           if (err) return done(err);
-          observedContexts.should.eql({ instance: {
+          observedContexts.should.eql(aTestModelCtx({ instance: {
             id: undefined,
             name: 'created'
-          }});
+          }}));
           done();
         });
       });
@@ -108,8 +110,8 @@ module.exports = function(connectorFactory, should) {
           function(err, list) {
             if (err) return done(err);
             observedContexts.should.eql([
-              { instance: { id: undefined, name: 'one' } },
-              { instance: { id: undefined, name: 'two' } },
+              aTestModelCtx({ instance: { id: undefined, name: 'one' } }),
+              aTestModelCtx({ instance: { id: undefined, name: 'two' } }),
             ]);
             done();
           });
@@ -130,10 +132,10 @@ module.exports = function(connectorFactory, should) {
 
         TestModel.create({ name: 'created' }, function(err, instance) {
           if (err) return done(err);
-          observedContexts.should.eql({ instance: {
+          observedContexts.should.eql(aTestModelCtx({ instance: {
             id: instance.id,
             name: 'created'
-          }});
+          }}));
           done();
         });
       });
@@ -168,8 +170,8 @@ module.exports = function(connectorFactory, should) {
           function(err, list) {
             if (err) return done(err);
             observedContexts.should.eql([
-              { instance: { id: list[0].id, name: 'one' } },
-              { instance: { id: list[1].id, name: 'two' } },
+              aTestModelCtx({ instance: { id: list[0].id, name: 'one' } }),
+              aTestModelCtx({ instance: { id: list[1].id, name: 'two' } }),
             ]);
             done();
           });
@@ -196,9 +198,9 @@ module.exports = function(connectorFactory, should) {
             // the models that were not created due to an error.
             list.map(get('name')).should.eql(['ok', 'fail']);
 
-            observedContexts.should.eql({
+            observedContexts.should.eql(aTestModelCtx({
               instance: { id: list[0].id, name: 'ok' }
-            });
+            }));
             done();
           });
       });
@@ -213,19 +215,20 @@ module.exports = function(connectorFactory, should) {
           { name: 'new-record' },
           function(err, record, created) {
             if (err) return done(err);
-            observedContexts.should.eql({ query: {
+            observedContexts.should.eql(aTestModelCtx({ query: {
               where: { name: 'new-record' },
               limit: 1,
               offset: 0,
               skip: 0
-            }});
+            }}));
             done();
           });
       });
 
-      // TODO(bajtos) DISCUSSION POINT
-      // Perhaps it's ok to let default impl not fire the event
-      // and connector-specific optimized impls to fire it?
+      // TODO(bajtos) Enable this test for all connectors that
+      // provide optimized implementation of findOrCreate.
+      // The unoptimized implementation does not trigger the hook
+      // when an existing model was found.
       it.skip('triggers `before save` hook when found', function(done) {
         TestModel.observe('before save', pushContextAndNext());
 
@@ -234,10 +237,10 @@ module.exports = function(connectorFactory, should) {
           { name: existingInstance.name },
           function(err, record, created) {
             if (err) return done(err);
-            observedContexts.should.eql({ instance: {
+            observedContexts.should.eql(aTestModelCtx({ instance: {
               id: undefined,
               name: existingInstance.name
-            }});
+            }}));
             done();
           });
       });
@@ -250,10 +253,10 @@ module.exports = function(connectorFactory, should) {
           { name: 'new-record' },
           function(err, record, created) {
             if (err) return done(err);
-            observedContexts.should.eql({ instance: {
+            observedContexts.should.eql(aTestModelCtx({ instance: {
               id: undefined,
               name: 'new-record'
-            }});
+            }}));
             done();
           });
       });
@@ -323,10 +326,10 @@ module.exports = function(connectorFactory, should) {
           { where: { name: 'new name' } },
           { name: 'new name' },
           function(err, instance) {
-            observedContexts.should.eql({ instance: {
+            observedContexts.should.eql(aTestModelCtx({ instance: {
               id: instance.id,
               name: 'new name'
-            }});
+            }}));
             done();
           });
       });
@@ -350,9 +353,9 @@ module.exports = function(connectorFactory, should) {
 
         TestModel.count({ id: existingInstance.id }, function(err, count) {
           if (err) return done(err);
-          observedContexts.should.eql({ query: {
+          observedContexts.should.eql(aTestModelCtx({ query: {
             where: { id: existingInstance.id }
-          }});
+          }}));
           done();
         });
       });
@@ -377,10 +380,10 @@ module.exports = function(connectorFactory, should) {
         existingInstance.name = 'changed';
         existingInstance.save(function(err, instance) {
           if (err) return done(err);
-          observedContexts.should.eql({ instance: {
+          observedContexts.should.eql(aTestModelCtx({ instance: {
             id: existingInstance.id,
             name: 'changed'
-          }});
+          }}));
           done();
         });
       });
@@ -423,10 +426,10 @@ module.exports = function(connectorFactory, should) {
         existingInstance.name = 'changed';
         existingInstance.save(function(err, instance) {
           if (err) return done(err);
-          observedContexts.should.eql({ instance: {
+          observedContexts.should.eql(aTestModelCtx({ instance: {
             id: existingInstance.id,
             name: 'changed'
-          }});
+          }}));
           done();
         });
       });
@@ -461,10 +464,10 @@ module.exports = function(connectorFactory, should) {
         existingInstance.name = 'changed';
         existingInstance.updateAttributes({ name: 'changed' }, function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ instance: {
+          observedContexts.should.eql(aTestModelCtx({ instance: {
             id: existingInstance.id,
             name: 'changed'
-          }});
+          }}));
           done();
         });
       });
@@ -518,10 +521,10 @@ module.exports = function(connectorFactory, should) {
         existingInstance.name = 'changed';
         existingInstance.updateAttributes({ name: 'changed' }, function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ instance: {
+          observedContexts.should.eql(aTestModelCtx({ instance: {
             id: existingInstance.id,
             name: 'changed'
-          }});
+          }}));
           done();
         });
       });
@@ -568,9 +571,9 @@ module.exports = function(connectorFactory, should) {
           { id: 'not-found', name: 'not found' },
           function(err, instance) {
             if (err) return done(err);
-            observedContexts.should.eql({ query: {
+            observedContexts.should.eql(aTestModelCtx({ query: {
               where: { id: 'not-found' }
-            }});
+            }}));
             done();
           });
       });
@@ -582,9 +585,9 @@ module.exports = function(connectorFactory, should) {
           { id: existingInstance.id, name: 'new name' },
           function(err, instance) {
             if (err) return done(err);
-            observedContexts.should.eql({ query: {
+            observedContexts.should.eql(aTestModelCtx({ query: {
               where: { id: existingInstance.id }
-            }});
+            }}));
             done();
           });
       });
@@ -611,10 +614,10 @@ module.exports = function(connectorFactory, should) {
           { id: existingInstance.id, name: 'updated name' },
           function(err, instance) {
             if (err) return done(err);
-            observedContexts.should.eql({ instance: {
+            observedContexts.should.eql(aTestModelCtx({ instance: {
               id: existingInstance.id,
               name: 'updated name'
-            }});
+            }}));
             done();
           });
       });
@@ -626,10 +629,10 @@ module.exports = function(connectorFactory, should) {
           { id: 'new-id', name: 'a name' },
           function(err, instance) {
             if (err) return done(err);
-            observedContexts.should.eql({ instance: {
+            observedContexts.should.eql(aTestModelCtx({ instance: {
               id: 'new-id',
               name: 'a name'
-            }});
+            }}));
             done();
           });
       });
@@ -724,10 +727,10 @@ module.exports = function(connectorFactory, should) {
           { id: existingInstance.id, name: 'updated name' },
           function(err, instance) {
             if (err) return done(err);
-            observedContexts.should.eql({ instance: {
+            observedContexts.should.eql(aTestModelCtx({ instance: {
               id: existingInstance.id,
               name: 'updated name'
-            }});
+            }}));
             done();
           });
       });
@@ -739,10 +742,10 @@ module.exports = function(connectorFactory, should) {
           { id: 'new-id', name: 'a name' },
           function(err, instance) {
             if (err) return done(err);
-            observedContexts.should.eql({ instance: {
+            observedContexts.should.eql(aTestModelCtx({ instance: {
               id: 'new-id',
               name: 'a name'
-            }});
+            }}));
             done();
           });
       });
@@ -756,7 +759,9 @@ module.exports = function(connectorFactory, should) {
 
         TestModel.deleteAll({ name: existingInstance.name }, function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ where: { name: existingInstance.name } });
+          observedContexts.should.eql(aTestModelCtx({
+             where: { name: existingInstance.name }
+          }));
           done();
         });
       });
@@ -766,7 +771,7 @@ module.exports = function(connectorFactory, should) {
 
         TestModel.deleteAll(function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ where: {} });
+          observedContexts.should.eql(aTestModelCtx({ where: {} }));
           done();
         });
       });
@@ -792,7 +797,7 @@ module.exports = function(connectorFactory, should) {
 
         TestModel.deleteAll(function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ where: {} });
+          observedContexts.should.eql(aTestModelCtx({ where: {} }));
           done();
         });
       });
@@ -802,7 +807,9 @@ module.exports = function(connectorFactory, should) {
 
         TestModel.deleteAll({ name: existingInstance.name }, function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ where: { name: existingInstance.name } });
+          observedContexts.should.eql(aTestModelCtx({
+            where: { name: existingInstance.name }
+          }));
           done();
         });
       });
@@ -823,7 +830,9 @@ module.exports = function(connectorFactory, should) {
 
         existingInstance.delete(function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ where: { id: existingInstance.id } });
+          observedContexts.should.eql(aTestModelCtx({
+            where: { id: existingInstance.id }
+          }));
           done();
         });
       });
@@ -854,7 +863,9 @@ module.exports = function(connectorFactory, should) {
 
         existingInstance.delete(function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ where: { id: existingInstance.id } });
+          observedContexts.should.eql(aTestModelCtx({
+            where: { id: existingInstance.id }
+          }));
           done();
         });
       });
@@ -864,7 +875,9 @@ module.exports = function(connectorFactory, should) {
 
         TestModel.deleteAll({ name: existingInstance.name }, function(err) {
           if (err) return done(err);
-          observedContexts.should.eql({ where: { name: existingInstance.name } });
+          observedContexts.should.eql(aTestModelCtx({
+            where: { name: existingInstance.name }
+          }));
           done();
         });
       });
@@ -925,11 +938,19 @@ module.exports = function(connectorFactory, should) {
         next();
       };
     }
+
+    function aTestModelCtx(ctx) {
+      ctx.Model = TestModel;
+      return deepCloneToObject(ctx);
+    }
   });
 
   function deepCloneToObject(obj) {
     return traverse(obj).map(function(x) {
-      if (x && x.toObject) return x.toObject(true);
+      if (x && x.toObject)
+        return x.toObject(true);
+      if (x && typeof x === 'function' && x.modelName)
+        return '[ModelCtor ' + x.modelName + ']';
     });
   }
 
