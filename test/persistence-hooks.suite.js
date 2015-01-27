@@ -298,8 +298,8 @@ module.exports = function(connectorFactory, should) {
 
       it('triggers hooks in the correct order when not found', function(done) {
         var triggered = [];
-        TestModel._notify = TestModel.notify;
-        TestModel.notify = function(operation, context, callback) {
+        TestModel._notify = TestModel.notifyObserversOf;
+        TestModel.notifyObserversOf = function(operation, context, callback) {
           triggered.push(operation);
           this._notify.apply(this, arguments);
         };

@@ -13,10 +13,10 @@ describe('async observer', function() {
     TestModel.observe('before', pushAndNext(notifications, 'before'));
     TestModel.observe('after', pushAndNext(notifications, 'after'));
 
-    TestModel.notify('before', {}, function(err) {
+    TestModel.notifyObserversOf('before', {}, function(err) {
       if (err) return done(err);
       notifications.push('call');
-      TestModel.notify('after', {}, function(err) {
+      TestModel.notifyObserversOf('after', {}, function(err) {
         if (err) return done(err);
 
         notifications.should.eql(['before', 'call', 'after']);
@@ -30,7 +30,7 @@ describe('async observer', function() {
     TestModel.observe('event', pushAndNext(notifications, 'one'));
     TestModel.observe('event', pushAndNext(notifications, 'two'));
 
-    TestModel.notify('event', {}, function(err) {
+    TestModel.notifyObserversOf('event', {}, function(err) {
       if (err) return done(err);
       notifications.should.eql(['one', 'two']);
       done();
@@ -44,7 +44,7 @@ describe('async observer', function() {
     var Child = TestModel.extend('Child');
     Child.observe('event', pushAndNext(notifications, 'child'));
 
-    Child.notify('event', {}, function(err) {
+    Child.notifyObserversOf('event', {}, function(err) {
       if (err) return done(err);
       notifications.should.eql(['base', 'child']);
       done();
@@ -58,7 +58,7 @@ describe('async observer', function() {
     var Child = TestModel.extend('Child');
     Child.observe('event', pushAndNext(notifications, 'child'));
 
-    TestModel.notify('event', {}, function(err) {
+    TestModel.notifyObserversOf('event', {}, function(err) {
       if (err) return done(err);
       notifications.should.eql(['base']);
       done();
@@ -72,7 +72,7 @@ describe('async observer', function() {
     var Child = TestModel.extend('Child');
     // Important: there are no observers on the Child model
 
-    Child.notify('event', {}, function(err) {
+    Child.notifyObserversOf('event', {}, function(err) {
       if (err) return done(err);
       notifications.should.eql(['base']);
       done();
@@ -80,7 +80,7 @@ describe('async observer', function() {
   });
 
   it('handles no observers', function(done) {
-    TestModel.notify('no-observers', {}, function(err) {
+    TestModel.notifyObserversOf('no-observers', {}, function(err) {
       // the test passes when no error was raised
       done(err);
     });
@@ -88,7 +88,7 @@ describe('async observer', function() {
 
   it('passes context to final callback', function(done) {
     var context = {};
-    TestModel.notify('event', context, function(err, ctx) {
+    TestModel.notifyObserversOf('event', context, function(err, ctx) {
       (ctx || "null").should.equal(context);
       done();
     });
