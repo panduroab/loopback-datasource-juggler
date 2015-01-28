@@ -360,7 +360,11 @@ describe('Memory connector', function () {
   });
 
   require('./persistence-hooks.suite')(
-    require('../lib/connectors/memory').Memory,
+    function() {
+      return new DataSource({
+        connector: require('../lib/connectors/memory').Memory
+      });
+    },
     should);
 });
 

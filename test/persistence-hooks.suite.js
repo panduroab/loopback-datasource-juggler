@@ -1,23 +1,36 @@
-var DataSource = require('../').DataSource;
 var ValidationError = require('../').ValidationError;
 var traverse = require('traverse');
 
-module.exports = function(connectorFactory, should) {
+module.exports = function(dataSourceFactory, should) {
   describe('Persistence hooks', function() {
     var observedContexts, expectedError, observersCalled;
     var ds, TestModel, existingInstance;
+    var migrated = false, lastId;
 
-    beforeEach(function setupEnv(done) {
+    beforeEach(function setupDatabase(done) {
       observedContexts = "hook not called";
       expectedError = new Error('test error');
       observersCalled = [];
 
-      ds = new DataSource({ connector: connectorFactory });
+      ds = dataSourceFactory();
       TestModel = ds.createModel('TestModel', {
         name: { type: String, required: true },
-        id: { type: String, id: true }
+        id: { type: String, id: true, default: uid }
       });
 
+      lastId = 0;
+
+      if (migrated) {
+        TestModel.deleteAll(done);
+      } else {
+        ds.automigrate(TestModel.modelName, function(err) {
+          migrated = true;
+          done(err);
+        });
+      }
+    });
+
+    beforeEach(function createTestData(done) {
       TestModel.create({ name: 'first' }, function(err, instance) {
         if (err) return done(err);
         existingInstance = instance;
@@ -95,7 +108,7 @@ module.exports = function(connectorFactory, should) {
         TestModel.create({ name: 'created' }, function(err, instance) {
           if (err) return done(err);
           observedContexts.should.eql(aTestModelCtx({ instance: {
-            id: undefined,
+            id: instance.id,
             name: 'created'
           }}));
           done();
@@ -132,8 +145,8 @@ module.exports = function(connectorFactory, should) {
           function(err, list) {
             if (err) return done(err);
             observedContexts.should.eql([
-              aTestModelCtx({ instance: { id: undefined, name: 'one' } }),
-              aTestModelCtx({ instance: { id: undefined, name: 'two' } }),
+              aTestModelCtx({ instance: { id: list[0].id, name: 'one' } }),
+              aTestModelCtx({ instance: { id: list[1].id, name: 'two' } }),
             ]);
             done();
           });
@@ -260,7 +273,7 @@ module.exports = function(connectorFactory, should) {
           function(err, record, created) {
             if (err) return done(err);
             observedContexts.should.eql(aTestModelCtx({ instance: {
-              id: undefined,
+              id: record.id,
               name: existingInstance.name
             }}));
             done();
@@ -276,7 +289,7 @@ module.exports = function(connectorFactory, should) {
           function(err, record, created) {
             if (err) return done(err);
             observedContexts.should.eql(aTestModelCtx({ instance: {
-              id: undefined,
+              id: record.id,
               name: 'new-record'
             }}));
             done();
@@ -1117,6 +1130,11 @@ module.exports = function(connectorFactory, should) {
 
     function loadTestModel(id, cb) {
       TestModel.findOne({ where: { id: id } }, { notify: false }, cb);
+    }
+
+    function uid() {
+      lastId += 1;
+      return '' + lastId;
     }
   });
 
