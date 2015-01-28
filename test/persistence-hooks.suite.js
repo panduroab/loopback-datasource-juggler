@@ -14,8 +14,9 @@ module.exports = function(dataSourceFactory, should) {
 
       ds = dataSourceFactory();
       TestModel = ds.createModel('TestModel', {
+        id: { type: String, id: true, default: uid },
         name: { type: String, required: true },
-        id: { type: String, id: true, default: uid }
+        extra: { type: String, required: false }
       });
 
       lastId = 0;
@@ -109,7 +110,8 @@ module.exports = function(dataSourceFactory, should) {
           if (err) return done(err);
           observedContexts.should.eql(aTestModelCtx({ instance: {
             id: instance.id,
-            name: 'created'
+            name: 'created',
+            extra: undefined
           }}));
           done();
         });
@@ -127,12 +129,12 @@ module.exports = function(dataSourceFactory, should) {
       it('applies updates from `before save` hook', function(done) {
         TestModel.observe('before save', function(ctx, next) {
           ctx.instance.should.be.instanceOf(TestModel);
-          ctx.instance.custom = 'hook data';
+          ctx.instance.extra = 'hook data';
           next();
         });
 
-        TestModel.create({ name: 'a-name' }, function(err, instance) {
-          instance.should.have.property('custom', 'hook data');
+        TestModel.create({ id: uid(), name: 'a-name' }, function(err, instance) {
+          instance.should.have.property('extra', 'hook data');
           done();
         });
       });
@@ -145,8 +147,12 @@ module.exports = function(dataSourceFactory, should) {
           function(err, list) {
             if (err) return done(err);
             observedContexts.should.eql([
-              aTestModelCtx({ instance: { id: list[0].id, name: 'one' } }),
-              aTestModelCtx({ instance: { id: list[1].id, name: 'two' } }),
+              aTestModelCtx({
+                instance: { id: list[0].id, name: 'one', extra: undefined }
+              }),
+              aTestModelCtx({
+                instance: { id: list[1].id, name: 'two', extra: undefined  }
+               }),
             ]);
             done();
           });
@@ -169,7 +175,8 @@ module.exports = function(dataSourceFactory, should) {
           if (err) return done(err);
           observedContexts.should.eql(aTestModelCtx({ instance: {
             id: instance.id,
-            name: 'created'
+            name: 'created',
+            extra: undefined
           }}));
           done();
         });
@@ -187,12 +194,12 @@ module.exports = function(dataSourceFactory, should) {
       it('applies updates from `after save` hook', function(done) {
         TestModel.observe('after save', function(ctx, next) {
           ctx.instance.should.be.instanceOf(TestModel);
-          ctx.instance.custom = 'hook data';
+          ctx.instance.extra = 'hook data';
           next();
         });
 
         TestModel.create({ name: 'a-name' }, function(err, instance) {
-          instance.should.have.property('custom', 'hook data');
+          instance.should.have.property('extra', 'hook data');
           done();
         });
       });
@@ -205,8 +212,12 @@ module.exports = function(dataSourceFactory, should) {
           function(err, list) {
             if (err) return done(err);
             observedContexts.should.eql([
-              aTestModelCtx({ instance: { id: list[0].id, name: 'one' } }),
-              aTestModelCtx({ instance: { id: list[1].id, name: 'two' } }),
+              aTestModelCtx({
+                instance: { id: list[0].id, name: 'one', extra: undefined }
+              }),
+              aTestModelCtx({
+                instance: { id: list[1].id, name: 'two', extra: undefined }
+              }),
             ]);
             done();
           });
@@ -234,7 +245,7 @@ module.exports = function(dataSourceFactory, should) {
             list.map(get('name')).should.eql(['ok', 'fail']);
 
             observedContexts.should.eql(aTestModelCtx({
-              instance: { id: list[0].id, name: 'ok' }
+              instance: { id: list[0].id, name: 'ok', extra: undefined }
             }));
             done();
           });
@@ -274,7 +285,8 @@ module.exports = function(dataSourceFactory, should) {
             if (err) return done(err);
             observedContexts.should.eql(aTestModelCtx({ instance: {
               id: record.id,
-              name: existingInstance.name
+              name: existingInstance.name,
+              extra: undefined
             }}));
             done();
           });
@@ -290,7 +302,8 @@ module.exports = function(dataSourceFactory, should) {
             if (err) return done(err);
             observedContexts.should.eql(aTestModelCtx({ instance: {
               id: record.id,
-              name: 'new-record'
+              name: 'new-record',
+              extra: undefined
             }}));
             done();
           });
@@ -363,7 +376,8 @@ module.exports = function(dataSourceFactory, should) {
           function(err, instance) {
             observedContexts.should.eql(aTestModelCtx({ instance: {
               id: instance.id,
-              name: 'new name'
+              name: 'new name',
+              extra: undefined
             }}));
             done();
           });
@@ -417,7 +431,8 @@ module.exports = function(dataSourceFactory, should) {
           if (err) return done(err);
           observedContexts.should.eql(aTestModelCtx({ instance: {
             id: existingInstance.id,
-            name: 'changed'
+            name: 'changed',
+            extra: undefined
           }}));
           done();
         });
@@ -435,12 +450,12 @@ module.exports = function(dataSourceFactory, should) {
       it('applies updates from `before save` hook', function(done) {
         TestModel.observe('before save', function(ctx, next) {
           ctx.instance.should.be.instanceOf(TestModel);
-          ctx.instance.custom = 'hook data';
+          ctx.instance.extra = 'hook data';
           next();
         });
 
         existingInstance.save(function(err, instance) {
-          instance.should.have.property('custom', 'hook data');
+          instance.should.have.property('extra', 'hook data');
           done();
         });
       });
@@ -463,7 +478,8 @@ module.exports = function(dataSourceFactory, should) {
           if (err) return done(err);
           observedContexts.should.eql(aTestModelCtx({ instance: {
             id: existingInstance.id,
-            name: 'changed'
+            name: 'changed',
+            extra: undefined
           }}));
           done();
         });
@@ -481,12 +497,12 @@ module.exports = function(dataSourceFactory, should) {
       it('applies updates from `after save` hook', function(done) {
         TestModel.observe('after save', function(ctx, next) {
           ctx.instance.should.be.instanceOf(TestModel);
-          ctx.instance.custom = 'hook data';
+          ctx.instance.extra = 'hook data';
           next();
         });
 
         existingInstance.save(function(err, instance) {
-          instance.should.have.property('custom', 'hook data');
+          instance.should.have.property('extra', 'hook data');
           done();
         });
       });
@@ -518,9 +534,8 @@ module.exports = function(dataSourceFactory, should) {
 
       it('applies updates from `before save` hook', function(done) {
         TestModel.observe('before save', function(ctx, next) {
-          ctx.data.custom = 'extra data';
+          ctx.data.extra = 'extra data';
           ctx.data.name = 'hooked name';
-          ctx.data.removed = undefined;
           next();
         });
 
@@ -532,7 +547,7 @@ module.exports = function(dataSourceFactory, should) {
             instance.toObject(true).should.eql({
               id: existingInstance.id,
               name: 'hooked name',
-              custom: 'extra data'
+              extra: 'extra data'
             });
             done();
           });
@@ -557,7 +572,8 @@ module.exports = function(dataSourceFactory, should) {
           if (err) return done(err);
           observedContexts.should.eql(aTestModelCtx({ instance: {
             id: existingInstance.id,
-            name: 'changed'
+            name: 'changed',
+            extra: undefined
           }}));
           done();
         });
@@ -575,12 +591,12 @@ module.exports = function(dataSourceFactory, should) {
       it('applies updates from `after save` hook', function(done) {
         TestModel.observe('after save', function(ctx, next) {
           ctx.instance.should.be.instanceOf(TestModel);
-          ctx.instance.custom = 'hook data';
+          ctx.instance.extra = 'hook data';
           next();
         });
 
         existingInstance.updateAttributes(function(err, instance) {
-          instance.should.have.property('custom', 'hook data');
+          instance.should.have.property('extra', 'hook data');
           done();
         });
       });
@@ -640,8 +656,8 @@ module.exports = function(dataSourceFactory, should) {
             findTestModels({ fields: ['id', 'name' ] }, function(err, list) {
               if (err) return done(err);
               (list||[]).map(toObject).should.eql([
-                { id: existingInstance.id, name: existingInstance.name },
-                { id: instance.id, name: 'new name' }
+                { id: existingInstance.id, name: existingInstance.name, extra: undefined },
+                { id: instance.id, name: 'new name', extra: undefined }
               ]);
               done();
             });
@@ -661,9 +677,9 @@ module.exports = function(dataSourceFactory, should) {
             findTestModels({ fields: ['id', 'name' ] }, function(err, list) {
               if (err) return done(err);
               (list||[]).map(toObject).should.eql([
-                { id: existingInstance.id, name: existingInstance.name },
-                { id: list[1].id, name: 'second' },
-                { id: instance.id, name: 'new name' }
+                { id: existingInstance.id, name: existingInstance.name, extra: undefined },
+                { id: list[1].id, name: 'second', extra: undefined },
+                { id: instance.id, name: 'new name', extra: undefined }
               ]);
               done();
             });
@@ -697,7 +713,8 @@ module.exports = function(dataSourceFactory, should) {
             if (err) return done(err);
             observedContexts.should.eql(aTestModelCtx({ instance: {
               id: existingInstance.id,
-              name: 'updated name'
+              name: 'updated name',
+              extra: undefined
             }}));
             done();
           });
@@ -712,7 +729,8 @@ module.exports = function(dataSourceFactory, should) {
             if (err) return done(err);
             observedContexts.should.eql(aTestModelCtx({ instance: {
               id: 'new-id',
-              name: 'a name'
+              name: 'a name',
+              extra: undefined
             }}));
             done();
           });
@@ -810,7 +828,8 @@ module.exports = function(dataSourceFactory, should) {
             if (err) return done(err);
             observedContexts.should.eql(aTestModelCtx({ instance: {
               id: existingInstance.id,
-              name: 'updated name'
+              name: 'updated name',
+              extra: undefined
             }}));
             done();
           });
@@ -825,7 +844,8 @@ module.exports = function(dataSourceFactory, should) {
             if (err) return done(err);
             observedContexts.should.eql(aTestModelCtx({ instance: {
               id: 'new-id',
-              name: 'a name'
+              name: 'a name',
+              extra: undefined
             }}));
             done();
           });
@@ -1011,8 +1031,8 @@ module.exports = function(dataSourceFactory, should) {
             findTestModels({ fields: ['id', 'name' ] }, function(err, list) {
               if (err) return done(err);
               (list||[]).map(toObject).should.eql([
-                { id: existingInstance.id, name: existingInstance.name },
-                { id: '2', name: 'new name' }
+                { id: existingInstance.id, name: existingInstance.name, extra: undefined },
+                { id: '2', name: 'new name', extra: undefined }
               ]);
               done();
             });
@@ -1037,7 +1057,7 @@ module.exports = function(dataSourceFactory, should) {
 
       it('applies updates from `before save` hook', function(done) {
         TestModel.observe('before save', function(ctx, next) {
-          ctx.data = { name: 'hooked', custom: 'added' };
+          ctx.data = { name: 'hooked', extra: 'added' };
           next();
         });
 
@@ -1049,7 +1069,7 @@ module.exports = function(dataSourceFactory, should) {
             loadTestModel(existingInstance.id, function(err, instance) {
               if (err) return done(err);
               instance.should.have.property('name', 'hooked');
-              instance.should.have.property('custom', 'added');
+              instance.should.have.property('extra', 'added');
               done();
             });
           });
