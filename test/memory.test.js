@@ -361,19 +361,16 @@ describe('Memory connector', function () {
   });
 
   require('./persistence-hooks.suite')(
-    function() { return new DataSource({ connector: Memory }); },
+    new DataSource({ connector: Memory }),
     should);
 });
 
 describe('Unoptimized connector', function() {
-  require('./persistence-hooks.suite')(
-    function() {
-      var ds = new DataSource({ connector: Memory });
-      // disable optimized methods
-      ds.connector.updateOrCreate = false;
-      return ds;
-    },
-    should);
+  var ds = new DataSource({ connector: Memory });
+  // disable optimized methods
+  ds.connector.updateOrCreate = false;
+
+  require('./persistence-hooks.suite')(ds, should);
 });
 
 

@@ -1,10 +1,10 @@
 var ValidationError = require('../').ValidationError;
 var traverse = require('traverse');
 
-module.exports = function(dataSourceFactory, should) {
+module.exports = function(dataSource, should) {
   describe('Persistence hooks', function() {
     var observedContexts, expectedError, observersCalled;
-    var ds, TestModel, existingInstance;
+    var TestModel, existingInstance;
     var migrated = false, lastId;
 
     beforeEach(function setupDatabase(done) {
@@ -12,8 +12,7 @@ module.exports = function(dataSourceFactory, should) {
       expectedError = new Error('test error');
       observersCalled = [];
 
-      ds = dataSourceFactory();
-      TestModel = ds.createModel('TestModel', {
+      TestModel = dataSource.createModel('TestModel', {
         id: { type: String, id: true, default: uid },
         name: { type: String, required: true },
         extra: { type: String, required: false }
@@ -24,7 +23,7 @@ module.exports = function(dataSourceFactory, should) {
       if (migrated) {
         TestModel.deleteAll(done);
       } else {
-        ds.automigrate(TestModel.modelName, function(err) {
+        dataSource.automigrate(TestModel.modelName, function(err) {
           migrated = true;
           done(err);
         });
@@ -739,7 +738,7 @@ module.exports = function(dataSourceFactory, should) {
           function(err, instance) {
             if (err) return done(err);
 
-            if (ds.connector.updateOrCreate) {
+            if (dataSource.connector.updateOrCreate) {
               // Atomic implementations of `updateOrCreate` cannot
               // provide full instance as that depends on whether
               // UPDATE or CREATE will be triggered
