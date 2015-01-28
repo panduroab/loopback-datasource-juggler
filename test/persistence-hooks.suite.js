@@ -723,11 +723,10 @@ module.exports = function(dataSourceFactory, should) {
           { id: existingInstance.id, name: 'updated name' },
           function(err, instance) {
             if (err) return done(err);
-            observedContexts.should.eql(aTestModelCtx({ instance: {
-              id: existingInstance.id,
-              name: 'updated name',
-              extra: undefined
-            }}));
+            observedContexts.should.eql(aTestModelCtx({
+              where: { id: existingInstance.id },
+              data: { id: existingInstance.id, name: 'updated name' }
+            }));
             done();
           });
       });
@@ -739,42 +738,30 @@ module.exports = function(dataSourceFactory, should) {
           { id: 'new-id', name: 'a name' },
           function(err, instance) {
             if (err) return done(err);
-            observedContexts.should.eql(aTestModelCtx({ instance: {
-              id: 'new-id',
-              name: 'a name',
-              extra: undefined
-            }}));
+
+            if (ds.connector.updateOrCreate) {
+              // Atomic implementations of `updateOrCreate` cannot
+              // provide full instance as that depends on whether
+              // UPDATE or CREATE will be triggered
+              observedContexts.should.eql(aTestModelCtx({
+                where: { id: 'new-id' },
+                data: { id: 'new-id', name: 'a name' }
+              }));
+            } else {
+              // The default unoptimized implementation runs
+              // `instance.save` and thus a full instance is availalbe
+              observedContexts.should.eql(aTestModelCtx({
+                instance: { id: 'new-id', name: 'a name', extra: undefined }
+              }));
+            }
+
             done();
           });
       });
 
-      // NOTE(bajtos) The default implementation of `updateOrCreate` in
-      // lib/dao.js loads the model first, thus any properties not set
-      // in the request data are populated with existing values.
-      // However, atomic implementations provided by connectors
-      // don't load the object first, thus the unset values are not
-      // filled from the existing data.
-      it('may or may not include unset properties in `before save` on update',
-        function(done) {
-          TestModel.observe('before save', pushContextAndNext());
-
-          TestModel.updateOrCreate(
-            { id: existingInstance.id },
-            function(err, instance) {
-              if (err) return done(err);
-              var name = observedContexts.instance.name;
-              (name === undefined || name === existingInstance.name)
-                .should.be.equal(true,
-                  'name should be either undefined or ' +
-                  JSON.stringify(existingInstance.name) + '; was: ' +
-                  JSON.stringify(name));
-              done();
-            });
-      });
-
       it('applies updates from `before save` hook on update', function(done) {
         TestModel.observe('before save', function(ctx, next) {
-          ctx.instance.name = 'hooked';
+          ctx.data.name = 'hooked';
           next();
         });
 
@@ -789,7 +776,11 @@ module.exports = function(dataSourceFactory, should) {
 
       it('applies updates from `before save` hook on create', function(done) {
         TestModel.observe('before save', function(ctx, next) {
-          ctx.instance.name = 'hooked';
+          if (ctx.instance) {
+            ctx.instance.name = 'hooked';
+          } else {
+            ctx.data.name = 'hooked';
+          }
           next();
         });
 
@@ -855,7 +846,7 @@ module.exports = function(dataSourceFactory, should) {
           function(err, instance) {
             if (err) return done(err);
             observedContexts.should.eql(aTestModelCtx({ instance: {
-              id: 'new-id',
+              id: instance.id,
               name: 'a name',
               extra: undefined
             }}));
