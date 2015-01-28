@@ -536,7 +536,7 @@ module.exports = function(dataSourceFactory, should) {
       it('aborts when `before save` hook fails', function(done) {
         TestModel.observe('before save', nextWithError(expectedError));
 
-        existingInstance.updateAttributes(function(err) {
+        existingInstance.updateAttributes({ name: 'updated' }, function(err) {
           [err].should.eql([expectedError]);
           done();
         });
@@ -549,7 +549,7 @@ module.exports = function(dataSourceFactory, should) {
           next();
         });
 
-        existingInstance.updateAttributes(function(err) {
+        existingInstance.updateAttributes({ name: 'updated' }, function(err) {
           if (err) return done(err);
           // We must query the database here because `updateAttributes`
           // returns effectively `this`, not the data from the datasource
@@ -568,7 +568,7 @@ module.exports = function(dataSourceFactory, should) {
       it('validates model after `before save` hook', function(done) {
         TestModel.observe('before save', invalidateTestModel());
 
-        existingInstance.updateAttributes(function(err) {
+        existingInstance.updateAttributes({ name: 'updated' }, function(err) {
           (err || {}).should.be.instanceOf(ValidationError);
           (err.details.codes || {}).should.eql({ name: ['presence'] });
           done();
@@ -593,7 +593,7 @@ module.exports = function(dataSourceFactory, should) {
       it('aborts when `after save` hook fails', function(done) {
         TestModel.observe('after save', nextWithError(expectedError));
 
-        existingInstance.updateAttributes(function(err) {
+        existingInstance.updateAttributes({ name: 'updated' }, function(err) {
           [err].should.eql([expectedError]);
           done();
         });
@@ -606,7 +606,7 @@ module.exports = function(dataSourceFactory, should) {
           next();
         });
 
-        existingInstance.updateAttributes(function(err, instance) {
+        existingInstance.updateAttributes({ name: 'updated' }, function(err, instance) {
           if (err) return done(err);
           instance.should.have.property('extra', 'hook data');
           done();
