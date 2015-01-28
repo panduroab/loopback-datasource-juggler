@@ -5,6 +5,7 @@ var fs = require('fs');
 var assert = require('assert');
 var async = require('async');
 var should = require('./init.js');
+var Memory = require('../lib/connectors/memory').Memory;
 
 describe('Memory connector', function () {
   var file = path.join(__dirname, 'memory.json');
@@ -360,10 +361,17 @@ describe('Memory connector', function () {
   });
 
   require('./persistence-hooks.suite')(
+    function() { return new DataSource({ connector: Memory }); },
+    should);
+});
+
+describe('Unoptimized connector', function() {
+  require('./persistence-hooks.suite')(
     function() {
-      return new DataSource({
-        connector: require('../lib/connectors/memory').Memory
-      });
+      var ds = new DataSource({ connector: Memory });
+      // disable optimized methods
+      ds.connector.updateOrCreate = false;
+      return ds;
     },
     should);
 });
