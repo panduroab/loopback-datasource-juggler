@@ -72,6 +72,7 @@ module.exports = function(dataSourceFactory, should) {
         });
 
         TestModel.find(function(err, list) {
+          if (err) return done(err);
           list.map(get('name')).should.eql([existingInstance.name]);
           done();
         });
@@ -96,6 +97,7 @@ module.exports = function(dataSourceFactory, should) {
         });
 
         TestModel.find({ where: { geo: { near: '10,20' } } }, function(err, list) {
+          if (err) return done(err);
           list.map(get('name')).should.eql([existingInstance.name]);
           done();
         });
@@ -134,6 +136,7 @@ module.exports = function(dataSourceFactory, should) {
         });
 
         TestModel.create({ id: uid(), name: 'a-name' }, function(err, instance) {
+          if (err) return done(err);
           instance.should.have.property('extra', 'hook data');
           done();
         });
@@ -199,6 +202,7 @@ module.exports = function(dataSourceFactory, should) {
         });
 
         TestModel.create({ name: 'a-name' }, function(err, instance) {
+          if (err) return done(err);
           instance.should.have.property('extra', 'hook data');
           done();
         });
@@ -334,6 +338,7 @@ module.exports = function(dataSourceFactory, should) {
           { where: { name: 'new-record' } },
           { name: 'new-record' },
           function(err, record, created) {
+            if (err) return done(err);
             triggered.should.eql([
               'query',
               'before save',
@@ -374,6 +379,7 @@ module.exports = function(dataSourceFactory, should) {
           { where: { name: 'new name' } },
           { name: 'new name' },
           function(err, instance) {
+            if (err) return done(err);
             observedContexts.should.eql(aTestModelCtx({ instance: {
               id: instance.id,
               name: 'new name',
@@ -390,6 +396,7 @@ module.exports = function(dataSourceFactory, should) {
           { where: { id: existingInstance.id } },
           { name: existingInstance.name },
           function(err, instance) {
+            if (err) return done(err);
             observedContexts.should.eql("hook not called");
             done();
           });
@@ -416,6 +423,7 @@ module.exports = function(dataSourceFactory, should) {
         });
 
         TestModel.count(function(err, count) {
+          if (err) return done(err);
           count.should.equal(1);
           done();
         });
@@ -455,6 +463,7 @@ module.exports = function(dataSourceFactory, should) {
         });
 
         existingInstance.save(function(err, instance) {
+          if (err) return done(err);
           instance.should.have.property('extra', 'hook data');
           done();
         });
@@ -502,6 +511,7 @@ module.exports = function(dataSourceFactory, should) {
         });
 
         existingInstance.save(function(err, instance) {
+          if (err) return done(err);
           instance.should.have.property('extra', 'hook data');
           done();
         });
@@ -544,6 +554,7 @@ module.exports = function(dataSourceFactory, should) {
           // We must query the database here because `updateAttributes`
           // returns effectively `this`, not the data from the datasource
           TestModel.findById(existingInstance.id, function(err, instance) {
+            if (err) return done(err);
             instance.toObject(true).should.eql({
               id: existingInstance.id,
               name: 'hooked name',
@@ -596,6 +607,7 @@ module.exports = function(dataSourceFactory, should) {
         });
 
         existingInstance.updateAttributes(function(err, instance) {
+          if (err) return done(err);
           instance.should.have.property('extra', 'hook data');
           done();
         });
